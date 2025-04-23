@@ -1,5 +1,5 @@
 class Bloque{
-  constructor(x, y, w, h, vida, color, puntos, especial){
+  constructor(x, y, w, h, vida, color, puntos, destructible){
     this.x = x;
     this.y = y;
     this.w = w;
@@ -7,7 +7,7 @@ class Bloque{
     this.vida = vida;
     this.color = color;
     this.puntos = puntos;
-    this.especial = especial;
+    this.destructible = destructible;
   }
   
   mostrar(){
@@ -55,6 +55,7 @@ class Bola {
     return false;
   }
 }
+let pelotas = [];
 
 class Paleta {
   constructor(x, y, w, h){
@@ -69,20 +70,79 @@ class Paleta {
   }
   
   mostrar(){
+    fill("white")
     rect(this.x, this.y, this.w, this.h);
   }
 }
+let paleta = new Paleta(425,600,50,10);
 
 let nivel_actual;
+let selector_de_nivel = 1;
 
 function setup() {
   createCanvas(900, 700);
   nivel_actual = crear_nivel_1();
+  crear_pelota(425,580);
 }
 
 function draw() {
-  background(220);
+  background(0);
+  frameRate(60);
+
+  actualizar();
+}
+
+function actualizar(){
   nivel_actual.mostrar();
+
+  paleta.mostrar();
+  paleta.actualizar();
+
+  movimiento_pelota();
+
+  if (juego_terminado == 1){
+    console.log("El juego CONTINUA");
+  }else if (juego_terminado == 2){
+    console.log("El juego FUE VENCIDO");
+  }else{
+    console.log("El juego SE ACABO");
+  }
+
+}
+
+function juego_terminado(){
+  let count = 0;
+  nivel_actual.bloques.forEach(bloque => {
+    if (bloque.destructible){
+      count++;
+    }
+  });
+
+  //JUGADOR ROMPIO TODOS LOS BLOQUES
+  if (count == 0){
+    return 2;
+  }
+
+  //JUGADOR PERDIO TODAS SUS PELOTAS
+  if (pelotas.length == 0){
+    return 3;
+  }
+
+  //EL JUEGO SIGUE CORRIENDO
+  return 1;
+}
+
+function movimiento_pelota(){
+  pelotas.forEach(pelota => {
+    pelota.x+=1;
+    pelota.y+=4;
+    pelota.mostrar();
+  });
+}
+
+function crear_pelota(x, y){
+  let pelota = new Bola(x, y, 10);
+  pelotas.push(pelota);
 }
 
 function crear_nivel_1 (){
@@ -91,7 +151,7 @@ function crear_nivel_1 (){
   // Crear bloques y agregarlos al nivel
   for (let i=0; i<17; i++){
     for (let j=0; j<5; j++){
-      let bloque = new Bloque(10 + i*52, 10 + j*22, 50, 20, 1, color(255,0,0), 10, false);
+      let bloque = new Bloque(10 + i*52, 10 + j*22, 50, 20, 1, color(255,0,0), 10, true);
       nivel1.agregarBloque(bloque);
     }
   }
