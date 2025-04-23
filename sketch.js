@@ -2,6 +2,8 @@ let vidas = 3;
 let velocidad_Bola = 7;
 let puntuacion = 0;
 let puntuacion_max = 0;
+let nivel_actual;
+let selector_de_nivel = 1; //VARIABLE PARA SABER QUE NIVEL SE JUEGA
 let esta_sacando = true; //VARIABLE PARA SABER SI EL JUGADOR ESTA SACANDO
 
 class Bloque{
@@ -113,10 +115,16 @@ class Paleta {
   actualizar() {
     //this.x = constrain(mouseX - this.w / 2, 0, width - this.w);
     if (keyIsDown(LEFT_ARROW) == true){
-      this.x -= 5;
+      this.x -= 7;
+      if (this.x < 0){
+        this.x = 0;
+      }
     }
     if (keyIsDown(RIGHT_ARROW) == true){
-      this.x += 5;
+      this.x += 7;
+      if (this.x > width - this.w){
+        this.x = width - this.w;
+      }
     }
     if (keyIsDown(UP_ARROW) == true){
       esta_sacando = false;
@@ -129,9 +137,6 @@ class Paleta {
   }
 }
 let paleta = new Paleta(400,600,100,10);
-
-let nivel_actual;
-let selector_de_nivel = 1;
 
 function setup() {
   createCanvas(900, 700);
@@ -156,6 +161,7 @@ function actualizar(){
     movimiento_pelota();
   }else if (juego_terminado() == 2){ //EL JUGADOR ROMPIO TODOS LOS BLOQUES
     console.log("Se rompieron todos los bloques");
+    pasar_nivel();
   }else if (juego_terminado() == 3){ // SE ACABARON LAS VIDAS DEL JUGADOR
     console.log("Se acabaron las vidas");
     reiniciar();
@@ -193,10 +199,12 @@ function movimiento_pelota(){
       pelota.actualizar();
       for (let i=0;i<nivel_actual.bloques.length;i++) {
         if (nivel_actual.bloques[i].vida > 0 && pelota.tocaBloque(nivel_actual.bloques[i])){
-          if (nivel_actual.bloques[i].vida == 1){
-            puntuacion++;
+          if (nivel_actual.bloques[i].destructible){
+            if (nivel_actual.bloques[i].vida == 1){
+              puntuacion++;
+            }
+            nivel_actual.bloques[i].vida--;
           }
-          nivel_actual.bloques[i].vida--;
           break;
         }
       }
@@ -214,18 +222,8 @@ function movimiento_pelota(){
 function reiniciar(){
   console.log("Toco reiniciar mi loco");
   pelotas = [];
-  switch (selector_de_nivel) {
-    case 1:
-      nivel_actual = crear_nivel_1();
-      break;
-    case 2:
-      nivel_actual = crear_nivel_2();
-      break;
-    case 3:
-      nivel_actual = crear_nivel_3();
-      break;
-    default: break;
-  }
+  nivel_actual = crear_nivel_1();
+  selector_de_nivel = 1;
   vidas = 3;
   console.log("Puntuacion: "+puntuacion+", Puntuacion max: "+puntuacion_max);
   puntuacion_max = (puntuacion > puntuacion_max)? puntuacion : puntuacion_max;
@@ -234,10 +232,8 @@ function reiniciar(){
 
 function pasar_nivel(){
   selector_de_nivel++;
+  esta_sacando = true;
   switch (selector_de_nivel) {
-    case 1:
-      nivel_actual = crear_nivel_1();
-      break;
     case 2:
       nivel_actual = crear_nivel_2();
       break;
@@ -262,8 +258,8 @@ function crear_nivel_1 (){
   crear_pelota(width/2,height/2);
 
   // Crear bloques y agregarlos al nivel
-  for (let i=0; i<3; i++){
-    for (let j=0; j<17; j++){
+  for (let i=0; i<4; i++){ // columnas
+    for (let j=0; j<17; j++){// filas
       let bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
       nivel1.agregarBloque(bloque);
     }
@@ -275,14 +271,13 @@ function crear_nivel_1 (){
 function crear_nivel_2(){
   let nivel2 = new Nivel();
   let bloque;
-
-  crear_pelota(width/2,height/2);
+  velocidad_Bola = 10;
 
   // Crear bloques y agregarlos al nivel
   for (let i=0; i<5; i++){
     for (let j=0; j<17; j++){
-      if (i == 1 && (j%2)==0){
-        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
+      if (i == 3 && (j%2)==0){
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 3, color(255,255,0), 10, true);
       }else{
         bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
       }
@@ -294,5 +289,24 @@ function crear_nivel_2(){
 }
 
 function crear_nivel_3(){
+  let nivel3 = new Nivel();
+  let bloque;
+  velocidad_Bola = 13;
 
+  // Crear bloques y agregarlos al nivel
+  for (let i=0; i<6; i++){
+    for (let j=0; j<17; j++){
+      if (i == 3 && (j == 3 || j == 13)){
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(147,147,147), 10, false);
+
+      }else if (i == 5 && (j%2)==0){
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 3, color(255,255,0), 10, true);
+      }else{
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
+      }
+      nivel3.agregarBloque(bloque);
+    }
+  }
+  
+  return nivel3;
 }
