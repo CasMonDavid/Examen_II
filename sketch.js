@@ -1,5 +1,8 @@
 let vidas = 3;
-let velocidad_Bola = 5;
+let velocidad_Bola = 7;
+let puntuacion = 0;
+let puntuacion_max = 0;
+let esta_sacando = true; //VARIABLE PARA SABER SI EL JUGADOR ESTA SACANDO
 
 class Bloque{
   constructor(x, y, w, h, vida, color, puntos, destructible){
@@ -54,8 +57,8 @@ class Bola {
   }
 
   posicionar () {
-    this.x = width / 2;
-    this.y = height / 2;
+    this.x = paleta.x + (paleta.w/2)
+    this.y = paleta.y - 15;
     let angle = random(-PI / 4, -3 * PI / 4);
     this.xspeed = velocidad_Bola * cos(angle);
     this.yspeed = velocidad_Bola * sin(angle);
@@ -69,6 +72,7 @@ class Bola {
     if (this.y > height + this.r) {
       vidas--;
       this.posicionar();
+      esta_sacando = true;
     }
   }
 
@@ -107,7 +111,16 @@ class Paleta {
   }
 
   actualizar() {
-    this.x = constrain(mouseX - this.w / 2, 0, width - this.w);
+    //this.x = constrain(mouseX - this.w / 2, 0, width - this.w);
+    if (keyIsDown(LEFT_ARROW) == true){
+      this.x -= 5;
+    }
+    if (keyIsDown(RIGHT_ARROW) == true){
+      this.x += 5;
+    }
+    if (keyIsDown(UP_ARROW) == true){
+      esta_sacando = false;
+    }
   }
   
   mostrar(){
@@ -135,16 +148,24 @@ function draw() {
 function actualizar(){
   nivel_actual.mostrar();
 
-  paleta.mostrar();
-  paleta.actualizar();
-
-  movimiento_pelota();
+  if (juego_terminado() == 1){ //EL JUEGO SIGUE CORRIENDO
+    console.log("El juego sigue corriendo");
+    paleta.mostrar();
+    paleta.actualizar();
+  
+    movimiento_pelota();
+  }else if (juego_terminado() == 2){ //EL JUGADOR ROMPIO TODOS LOS BLOQUES
+    console.log("Se rompieron todos los bloques");
+  }else if (juego_terminado() == 3){ // SE ACABARON LAS VIDAS DEL JUGADOR
+    console.log("Se acabaron las vidas");
+    reiniciar();
+  }
 }
 
 function juego_terminado(){
   let count = 0;
   nivel_actual.bloques.forEach(bloque => {
-    if (bloque.destructible){
+    if (bloque.vida > 0){
       count++;
     }
   });
@@ -154,8 +175,8 @@ function juego_terminado(){
     return 2;
   }
 
-  //JUGADOR PERDIO TODAS SUS PELOTAS
-  if (pelotas.length == 0){
+  //JUGADOR PERDIO TODAS SUS VIDAS
+  if (vidas <= 0){
     return 3;
   }
 
@@ -164,26 +185,70 @@ function juego_terminado(){
 }
 
 function movimiento_pelota(){
-  pelotas.forEach(pelota => {
-    pelota.actualizar();
-    for (let i=0;i<nivel_actual.bloques.length;i++) {
-      if (nivel_actual.bloques[i].vida > 0 && pelota.tocaBloque(nivel_actual.bloques[i])){
-        nivel_actual.bloques[i].vida--;
-        break;
+  if (esta_sacando){// SI EL JUGADOR VA A SACAR LA PELOTA LO VA A SEGUIR
+    pelotas[0].posicionar();
+    pelotas[0].mostrar();
+  }else{ // CASO CONTRARIO SEGUIRA SU RITMO
+    pelotas.forEach(pelota => {
+      pelota.actualizar();
+      for (let i=0;i<nivel_actual.bloques.length;i++) {
+        if (nivel_actual.bloques[i].vida > 0 && pelota.tocaBloque(nivel_actual.bloques[i])){
+          if (nivel_actual.bloques[i].vida == 1){
+            puntuacion++;
+          }
+          nivel_actual.bloques[i].vida--;
+          break;
+        }
       }
-    }
-    nivel_actual.bloques.forEach(bloque => {
-      
+      nivel_actual.bloques.forEach(bloque => {
+        
+      });
+  
+      pelota.tocaPaleta(paleta);
+  
+      pelota.mostrar();
     });
-
-    pelota.tocaPaleta(paleta);
-
-    pelota.mostrar();
-  });
+  }
 }
 
 function reiniciar(){
   console.log("Toco reiniciar mi loco");
+  pelotas = [];
+  switch (selector_de_nivel) {
+    case 1:
+      nivel_actual = crear_nivel_1();
+      break;
+    case 2:
+      nivel_actual = crear_nivel_2();
+      break;
+    case 3:
+      nivel_actual = crear_nivel_3();
+      break;
+    default: break;
+  }
+  vidas = 3;
+  console.log("Puntuacion: "+puntuacion+", Puntuacion max: "+puntuacion_max);
+  puntuacion_max = (puntuacion > puntuacion_max)? puntuacion : puntuacion_max;
+  puntuacion = 0;
+}
+
+function pasar_nivel(){
+  selector_de_nivel++;
+  switch (selector_de_nivel) {
+    case 1:
+      nivel_actual = crear_nivel_1();
+      break;
+    case 2:
+      nivel_actual = crear_nivel_2();
+      break;
+    case 3:
+      nivel_actual = crear_nivel_3();
+      break;
+    case 4:
+      //GANAR EL JUEGO O NIVELES INFINIOS O LO QUE SEA
+      break;
+    default: break;
+  }
 }
 
 function crear_pelota(x, y){
@@ -205,4 +270,29 @@ function crear_nivel_1 (){
   }
   
   return nivel1;
+}
+
+function crear_nivel_2(){
+  let nivel2 = new Nivel();
+  let bloque;
+
+  crear_pelota(width/2,height/2);
+
+  // Crear bloques y agregarlos al nivel
+  for (let i=0; i<5; i++){
+    for (let j=0; j<17; j++){
+      if (i == 1 && (j%2)==0){
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
+      }else{
+        bloque = new Bloque(10 + j*52, 10 + i*22, 50, 20, 1, color(255,0,0), 10, true);
+      }
+      nivel2.agregarBloque(bloque);
+    }
+  }
+  
+  return nivel2;
+}
+
+function crear_nivel_3(){
+
 }
