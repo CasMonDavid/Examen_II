@@ -71,7 +71,10 @@ class Bola {
   actualizar() {
     this.x += this.xspeed;
     this.y += this.yspeed;
-    if (this.x < this.r || this.x > width - this.r) this.xspeed *= -1;
+    if (this.x < this.r || this.x > width - this.r) {
+      this.xspeed *= -1
+      this.x += this.xspeed;
+    }
     if (this.y < this.r) this.yspeed *= -1;
     if (this.y > height + this.r) {
       vidas--;
@@ -109,7 +112,7 @@ class Paleta {
   }
   actualizar() {
     if (keyIsDown(LEFT_ARROW))  this.x = max(this.x - 7, 0);
-    if (keyIsDown(RIGHT_ARROW)) this.x = min(this.x + 7, width - this.w);
+    if (keyIsDown(RIGHT_ARROW)) this.x = min(this.x + 7, width - this.w);  
   }
   mostrar() {
     fill("white"); rect(this.x, this.y, this.w, this.h);
@@ -259,6 +262,7 @@ function crear_pelota(x, y) {
 // CREACIÓN DE NIVELES (offset Y con UI)
 function crear_nivel_1() {
   let n1 = new Nivel();
+  velocidad_Bola = 7;
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 17; j++) {
       let x = 10 + j*52;
