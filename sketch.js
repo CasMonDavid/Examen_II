@@ -7,14 +7,15 @@ let nivel_actual;
 
 // Para pruebas: cambiar este valor y recargar para arrancar en otro nivel
 const nivelInicial = 1;
+const nivelFinal = 3;               // ← AÑADIDO: número de niveles totales
 let selector_de_nivel = nivelInicial;
 
-// Estados de juego: 'transition', 'playing', 'paused', 'resuming'
+// Estados de juego: 'transition', 'playing', 'paused', 'resuming', 'win', 'lose'
 let gameState;
 let transitionTimer = 0;
 let resumeTimer = 0;
-const dureTransicion = 2 * 60; // 2 seg
-const dureResumir = 3 * 60;    // 3 seg
+const dureTransicion = 2 * 60;      // 2 seg
+const dureResumir    = 3 * 60;      // 3 seg
 
 // Lanzamiento de bola
 let estaSacando = true;
@@ -22,32 +23,32 @@ let estaSacando = true;
 // Power-up mensajes
 let powerMsg = '';
 let powerMsgTimer = 0;
-const powerMsgDuration = 2 * 60; // 2 seg
+const powerMsgDuration = 2 * 60;   // 2 seg
 
 // Paddle grow
-const paddleDefaultWidth = 100;
-const paddleGrowFactor = 1.5;
-const paddleGrowDuration = 10 * 60; // 10s
-let paddleGrowTimer = 0;
+const paddleDefaultWidth  = 100;
+const paddleGrowFactor    = 1.5;
+const paddleGrowDuration  = 10 * 60; // 10s
+let paddleGrowTimer       = 0;
 
 // Paddle speed-up
 const paddleDefaultSpeed = 7;
-const paddleSpeedFactor = 1.5;
-const paddleSpeedDuration = 10 * 60; // 10s
+const paddleSpeedFactor  = 1.5;
+const paddleSpeedDuration = 10 * 60;  // 10s
 let paddleSpeed = paddleDefaultSpeed;
 let paddleSpeedTimer = 0;
 
-// Muro
+// Wall power-up
 let wallActive = false;
 let wallTimer = 0;
 let wallY = 0;
-const wallDuration = 15 * 60; // 15s
+const wallDuration = 15 * 60;       // 15s
 
 // Probabilidad de power-up
-const probPowerUp = 0.1; // 10%
+const probPowerUp = 0.2; //20%
 
 // UI
-const altoUI = 50;
+let altoUI = 50;
 const margenBloques = 10;
 
 let pelotas = [];
@@ -145,6 +146,7 @@ function initLevel() {
   paddleGrowTimer = 0;
   paddleSpeedTimer = 0;
   wallActive = false;
+  wallTimer = 0;
   selector_de_nivel = selector_de_nivel;
   switch(selector_de_nivel) {
     case 1: nivel_actual = crear_nivel_1(); break;
@@ -156,11 +158,32 @@ function initLevel() {
   estaSacando = true;
   gameState = 'transition';
   transitionTimer = dureTransicion;
+  loop();                           // asegúrate de reiniciar draw loop
 }
 
 function draw() {
   background(0);
   frameRate(60);
+
+  // Mostrar muro cuando power-up activo
+  if (wallActive) {
+    stroke(255);
+    strokeWeight(4);
+    line(0, wallY, width, wallY);
+  }
+
+  // Checar estados de victoria/derrota
+  if (gameState === 'win') {
+    mostrarMensajeCentro('¡VICTORIA!');
+    noLoop();
+    return;
+  }
+  if (gameState === 'lose') {
+    mostrarMensajeCentro('GAME OVER');
+    noLoop();
+    return;
+  }
+
   mostrarUI();
 
   if (--paddleGrowTimer <= 0) paleta.w = paddleDefaultWidth;
@@ -191,6 +214,11 @@ function draw() {
 }
 
 function keyPressed() {
+  // Reinicio con ENTER tras victoria o derrota
+  if ((gameState === 'win' || gameState === 'lose') && keyCode === ENTER) {
+    reiniciar();
+    return;
+  }
   if (key === ' ') {
     if (gameState === 'playing') gameState = 'paused';
     else if (gameState === 'paused') { gameState = 'resuming'; resumeTimer = dureResumir; }
@@ -203,9 +231,17 @@ function actualizar() {
   paleta.mostrar();
   paleta.actualizar();
   movimiento_pelota();
+
   const estado = juego_terminado();
-  if (estado === 2) pasar_nivel();
-  else if (estado === 3) reiniciar();
+  if (estado === 2) {
+    if (selector_de_nivel === nivelFinal) {
+      gameState = 'win';           // ← AÑADIDO: nivel final completado
+    } else {
+      pasar_nivel();
+    }
+  } else if (estado === 3) {
+    gameState = 'lose';            // ← AÑADIDO: vidas agotadas
+  }
 }
 
 function movimiento_pelota() {
@@ -220,7 +256,7 @@ function movimiento_pelota() {
       if (b.vida > 0 && p.tocaBloque(b)) {
         if (b.destructible) {
           if (b.vida === 1) puntuacion++;
-          b.vida--; 
+          b.vida--;
           if (b.vida === 0 && random() < probPowerUp) {
             const types = ['paddle', 'wall', 'extraBalls', 'speed'];
             const t = random(types);
@@ -255,9 +291,10 @@ function aplicarPowerUp(type) {
 }
 
 function juego_terminado() {
-  const quedan = nivel_actual.bloques.filter(b => b.vida > 0).length;
+  // Solo consideramos bloques destructibles para la victoria
+  const quedan = nivel_actual.bloques.filter(b => b.destructible && b.vida > 0).length;
   if (quedan === 0) return 2;
-  if (vidas <= 0) return 3;
+  if (vidas <= 0)    return 3;
   return 1;
 }
 
@@ -281,7 +318,7 @@ function crear_pelota() {
 function mostrarUI() {
   noStroke(); fill(0, 150); rect(0, 0, width, altoUI);
   fill(255); textSize(16);
-  textAlign(LEFT, TOP); text(`Vidas: ${vidas}`, 10, 10);
+  textAlign(LEFT, TOP);  text(`Vidas: ${vidas}`, 10, 10);
   text(`Puntuación: ${puntuacion}`, 10, 30);
   textAlign(RIGHT, TOP); text(`Nivel: ${selector_de_nivel}`, width - 10, 10);
   text(`Max: ${puntuacion_max}`, width - 10, 30);
@@ -293,13 +330,16 @@ function mostrarMensajeCentro(msg) {
 
 // CREACIÓN DE NIVELES (offset Y con UI)
 function crear_nivel_1() {
-  const n = new Nivel(); velocidad_Bola = 7;
+  let n1 = new Nivel();
+  velocidad_Bola = 7;
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 17; j++) {
-      n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 1, color(255,0,0), 10, true));
+      let x = 10 + j*52;
+      let y = altoUI + margenBloques + i*22;
+      n1.agregarBloque(new Bloque(x, y, 50, 20, 1, color(255,0,0), 10, true));
     }
   }
-  return n;
+  return n1;
 }
 
 function crear_nivel_2() {
@@ -307,7 +347,7 @@ function crear_nivel_2() {
   for (let i = 0; i < 5; i++) {
     for (let j = 0; j < 17; j++) {
       const vida = (i === 3 && j % 2 === 0) ? 3 : 1;
-      const col = (i === 3 && j % 2 === 0) ? color(255,255,0) : color(255,0,0);
+      const col  = (i === 3 && j % 2 === 0) ? color(255,255,0) : color(255,0,0);
       n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, vida, col, 10, true));
     }
   }
@@ -318,11 +358,13 @@ function crear_nivel_3() {
   const n = new Nivel(); velocidad_Bola = 13;
   for (let i = 0; i < 6; i++) {
     for (let j = 0; j < 17; j++) {
-      if (i === 3 && (j === 3 || j === 13)) n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 1, color(147,147,147), 10, false));
-      else if (i === 5 && j % 2 === 0) n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 3, color(255,255,0), 10, true));
-      else n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 1, color(255,0,0), 10, true));
+      if (i === 3 && (j === 3 || j === 13))
+        n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 1, color(147,147,147), 10, false));
+      else if (i === 5 && j % 2 === 0)
+        n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 3, color(255,255,0), 10, true));
+      else
+        n.agregarBloque(new Bloque(10 + j*52, altoUI + margenBloques + i*22, 50, 20, 1, color(255,0,0), 10, true));
     }
   }
   return n;
 }
-
