@@ -93,7 +93,10 @@ class Bola {
     }
     this.x += this.xspeed;
     this.y += this.yspeed;
-    if (this.x < this.r || this.x > width - this.r) this.xspeed *= -1;
+    if (this.x < this.r || this.x > width - this.r) {
+      this.xspeed *= -1
+      this.x += this.xspeed;
+    }
     if (this.y < this.r) this.yspeed *= -1;
     if (this.y > height + this.r) {
       if (pelotas.length > 1) pelotas.splice(pelotas.indexOf(this), 1);
